@@ -29,13 +29,33 @@ void shminit() {
 }
 
 int shm_open(int id, char **pointer) {
-
-//you write this
-
-
-
-
-return 0; //added to remove compiler warning -- you should decide what to return
+  int i;
+  acquire(&(shm_table.lock));
+  for (i = 0; i< 64; i++) {
+    if(shm_table.shm_pages[i].id == id) {
+      mappages(myproc()->pgdir, (void*) PGROUNDUP(myproc()->sz), PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+      shm_table.shm_pages[i].refcnt++;
+      *pointer=(char *) PGROUNDUP(myproc()->sz);
+      myproc()->sz += PGSIZE;
+      release(&(shm_table.lock));
+      return 0;
+    }
+  }
+  // Shared memory DNE
+  for (i = 0; i < 64; ++i) {
+    if(shm_table.shm_pages[i].id == 0) {
+      shm_table.shm_pages[i].id = id;
+      shm_table.shm_pages[i].frame = kalloc();
+      shm_table.shm_pages[i].refcnt = 1;
+      mappages(myproc()->pgdir, (void*) PGROUNDUP(myproc()->sz), PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+      *pointer=(char *) PGROUNDUP(myproc()->sz);
+      myproc()->sz += PGSIZE;
+      release(&(shm_table.lock));
+      return 0;
+    }
+  }
+  release(&(shm_table.lock));
+  return 0;
 }
 
 
