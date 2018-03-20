@@ -33,7 +33,6 @@ int shm_open(int id, char **pointer) {
   acquire(&(shm_table.lock));
   for (i = 0; i< 64; i++) {
     if(shm_table.shm_pages[i].id == id) {
-      // cprintf("Found matching shared memory\n");
       mappages(myproc()->pgdir, (void*) PGROUNDUP(myproc()->sz), PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
       shm_table.shm_pages[i].refcnt++;
       *pointer=(char *) PGROUNDUP(myproc()->sz);
@@ -42,11 +41,9 @@ int shm_open(int id, char **pointer) {
       return 0;
     }
   }
-  // cprintf("Shared memory DNE\n");
   // Shared memory DNE
   for (i = 0; i < 64; ++i) {
     if(shm_table.shm_pages[i].id == 0) {
-      // cprintf("Creating new shared page\n");
       shm_table.shm_pages[i].id = id;
       shm_table.shm_pages[i].frame = kalloc();
       shm_table.shm_pages[i].refcnt = 1;
@@ -77,6 +74,10 @@ int shm_close(int id) {
       break;
     }
   }
+  if(shm_table.shm_pages[i].id != id) { // shared memory item not found
+    release(&(shm_table.lock));
+    return 1;
+  }
   release(&(shm_table.lock));
-  return 0; //added to remove compiler warning -- you should decide what to return
+  return 0;
 }
